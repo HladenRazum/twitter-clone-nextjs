@@ -5,6 +5,7 @@ import { api, RouterOutputs } from "~/utils/api";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import Image from "next/image";
+import { LoadingSpinner } from "~/components/loading";
 
 dayjs.extend(relativeTime);
 
@@ -58,19 +59,33 @@ const PostView = (props: PostWithUser) => {
   );
 };
 
-const Home: NextPage = () => {
-  const user = useUser();
+const Feed = () => {
+  const { data, isLoading: postsLoading } = api.posts.getAll.useQuery();
 
-  const { data, isLoading } = api.posts.getAll.useQuery();
-
-  console.log({ data });
-
-  if (isLoading) {
-    return <div>Loading...</div>;
+  if (postsLoading) {
+    return <LoadingPage />;
   }
 
   if (!data) {
     return <div>Something went wrong</div>;
+  }
+
+  return (
+    <div>
+      {data.map((postWithUser) => (
+        <PostView {...postWithUser} key={postWithUser.post.id} />
+      ))}
+    </div>
+  );
+};
+
+const Home: NextPage = () => {
+  const { isLoaded: userLoaded, isSignedIn } = useUser();
+
+  api.posts.getAll.useQuery();
+
+  if (!userLoaded) {
+    return <div></div>;
   }
 
   return (
@@ -83,14 +98,10 @@ const Home: NextPage = () => {
       <main className="flex h-screen justify-center">
         <div className="h-full w-full border-x border-slate-400 md:max-w-2xl">
           <div className="flex border-b p-4">
-            {!!user.isSignedIn ? <SignOutButton /> : <SignInButton />}
+            {!!isSignedIn ? <SignOutButton /> : <SignInButton />}
           </div>
-          {user.isSignedIn && <CreatePostWizard />}
-          <div>
-            {data?.map((postWithUser) => (
-              <PostView {...postWithUser} key={postWithUser.post.id} />
-            ))}
-          </div>
+          {isSignedIn && <CreatePostWizard />}
+          <Feed />
         </div>
       </main>
     </>
@@ -98,3 +109,11 @@ const Home: NextPage = () => {
 };
 
 export default Home;
+
+export const LoadingPage = () => {
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <LoadingSpinner size={52} />
+    </div>
+  );
+};
